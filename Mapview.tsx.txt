@@ -1,0 +1,307 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Search, MapPin, X, AlertTriangle, CheckCircle, Home, MessageCircle } from "lucide-react";
+
+// --- START: Mocked UI Components & Data (Required for Single-File Mandate) ---
+
+// Mock data to replace Supabase fetching
+const MOCK_ISSUES = [
+  { id: '1', title: 'Pothole on Main Street', status: 'in-progress', department: 'Roads', latitude: 34.0522, longitude: -118.2437 },
+  { id: '2', title: 'Street light out near park', status: 'pending', department: 'Lighting', latitude: 34.0530, longitude: -118.2500 },
+  { id: '3', title: 'Graffiti on bridge support', status: 'resolved', department: 'Cleaning', latitude: 34.0500, longitude: -118.2450 },
+];
+
+// Simplified Card Component
+const Card = ({ children, className = "" }) => (
+  <div className={bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md ${className}}>
+    {children}
+  </div>
+);
+const CardContent = ({ children, className = "" }) => (
+  <div className={p-6 ${className}}>
+    {children}
+  </div>
+);
+
+// Simplified Button Component
+const Button = ({ children, onClick, size = 'default', asChild, className = "" }) => {
+  const sizeClasses = size === 'icon' ? 'h-10 w-10 p-2' : 'h-10 px-4 py-2';
+  return (
+    <button onClick={onClick} className={flex items-center justify-center font-medium rounded-lg transition duration-200 ease-in-out bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600 ${sizeClasses} ${className}}>
+      {children}
+    </button>
+  );
+};
+
+// Simplified Badge Component
+const Badge = ({ children, className = "", variant = 'default' }) => {
+  let color = 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-200';
+  if (variant === 'outline') {
+    color = 'bg-transparent border';
+  }
+  
+  return (
+    <span className={inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${color} ${className}}>
+      {children}
+    </span>
+  );
+};
+
+// Simplified Input Component for iframe code
+const Textarea = ({ value, onChange, placeholder, className = "" }) => (
+  <textarea
+    value={value}
+    onChange={onChange}
+    placeholder={placeholder}
+    rows={4}
+    className={w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 resize-none dark:bg-gray-700 dark:text-white text-sm ${className}}
+  />
+);
+
+// Simplified Header (to keep structure)
+const Header = () => (
+    <header className="sticky top-0 z-20 w-full border-b bg-white/90 backdrop-blur-sm dark:bg-gray-900/90">
+        <div className="container h-16 flex items-center justify-between">
+            <h1 className="text-xl font-bold text-indigo-600 dark:text-indigo-400">Lovable AI Issue Tracker</h1>
+        </div>
+    </header>
+)
+
+// --- END: Mocked UI Components & Data ---
+
+
+interface Issue {
+  id: string;
+  title: string;
+  status: string;
+  department: string;
+  latitude: number;
+  longitude: number;
+}
+
+
+const MapView = () => {
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [iframeCode, setIframeCode] = useState('');
+  const [embedHtml, setEmbedHtml] = useState<string | null>(null);
+
+  // Mock fetching issues
+  useEffect(() => {
+    // Simulate API delay
+    const timer = setTimeout(() => {
+      setIssues(MOCK_ISSUES);
+      setLoading(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+
+  /**
+   * Function to safely extract the iframe's content and apply responsive styles.
+   */
+  const extractAndStyleIframe = useCallback((htmlString: string) => {
+    try {
+      // 1. Create a temporary DOM element (div)
+      const tempDiv = document.createElement('div');
+      // 2. Set its innerHTML to the user's input string
+      tempDiv.innerHTML = htmlString;
+      // 3. Find the iframe element within the temporary div
+      const iframe = tempDiv.querySelector('iframe');
+      
+      // 4. Check if an iframe was actually found
+      if (iframe) {
+        // 5. Apply Tailwind classes for responsive styling
+        iframe.className = "w-full rounded-xl border-4 border-indigo-300 dark:border-indigo-700 shadow-xl transition-all"; 
+        iframe.style.minHeight = '600px'; 
+        iframe.style.height = '100%'; 
+        iframe.style.width = '100%';
+        iframe.setAttribute('loading', 'lazy');
+
+        // 6. Return the sanitized HTML of the modified iframe
+        return iframe.outerHTML;
+      }
+    } catch (e) {
+      console.error("Error parsing iframe code:", e);
+    }
+    return null;
+  }, []);
+
+
+  const handleEmbed = () => {
+    const cleanedHtml = extractAndStyleIframe(iframeCode);
+    if (cleanedHtml) {
+      setEmbedHtml(cleanedHtml);
+    } else {
+      console.error("The pasted code does not contain a valid iframe element.");
+      alert("Error: Please paste the full Google Maps iframe embed code, starting with '<iframe'.");
+    }
+  };
+  
+  const handleClear = () => {
+      setIframeCode('');
+      setEmbedHtml(null);
+  }
+
+  const isMapEmbedded = useMemo(() => embedHtml !== null, [embedHtml]);
+
+  // The floating action buttons use simplified Link/Button wrappers
+  const MockLink = ({ to, children }) => <a href={to} onClick={(e) => { e.preventDefault(); console.log(Navigating to ${to})}}>{children}</a>;
+
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
+      <Header />
+      
+      {/* Floating action buttons (using mock links) */}
+      <div className="fixed bottom-6 right-6 z-30 flex flex-col gap-3">
+        <Button
+          asChild
+          size="icon"
+          className="h-12 w-12 rounded-full shadow-lg bg-indigo-600 hover:bg-indigo-700"
+        >
+          <MockLink to="/">
+            <Home className="h-5 w-5" />
+          </MockLink>
+        </Button>
+        <Button
+          asChild
+          size="icon"
+          className="h-12 w-12 rounded-full shadow-lg bg-green-500 hover:bg-green-600"
+        >
+          <MockLink to="/support">
+            <MessageCircle className="h-5 w-5" />
+          </MockLink>
+        </Button>
+      </div>
+
+      <div className="container mx-auto max-w-7xl py-12 px-4 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">Issue Map</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">
+            See all reported issues in your area via the embedded map.
+          </p>
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            {/* START: Google Maps Iframe Embed Area (Replaces MapboxMap) */}
+            <Card className="p-0 border-none shadow-none">
+                <div className="p-6 bg-gray-100 dark:bg-gray-800 rounded-xl mb-4">
+                    <h2 className="text-xl font-bold mb-4 flex items-center text-gray-900 dark:text-white">
+                        <MapPin className="w-5 h-5 mr-2 text-indigo-500" />
+                        Google Maps Embed Configuration
+                    </h2>
+                    <Textarea 
+                      value={iframeCode}
+                      onChange={(e) => setIframeCode(e.target.value)}
+                      placeholder="Paste your full Google Maps iframe code here (it starts with <iframe ...>)"
+                    />
+                    <div className="flex justify-end gap-3 mt-4">
+                        <Button onClick={handleClear} className="bg-gray-400 hover:bg-gray-500 text-white dark:bg-gray-600 dark:hover:bg-gray-500">
+                            <X className="w-4 h-4 mr-1"/> Clear Map
+                        </Button>
+                        <Button 
+                          onClick={handleEmbed} 
+                          disabled={iframeCode.trim() === ''}
+                        >
+                            <Search className="w-4 h-4 mr-1"/> Load Map
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="w-full">
+                    {isMapEmbedded && embedHtml ? (
+                      // CRITICAL: Renders the iframe using dangerouslySetInnerHTML
+                      <div 
+                        dangerouslySetInnerHTML={{ __html: embedHtml }} 
+                        className="w-full"
+                      />
+                    ) : (
+                      <div className="h-[600px] flex flex-col items-center justify-center bg-gray-200 dark:bg-gray-700 rounded-xl border-4 border-dashed border-gray-400 dark:border-gray-600 p-6 text-center">
+                        <div className="text-gray-600 dark:text-gray-300">
+                          <MapPin className="w-12 h-12 mx-auto mb-4"/>
+                          <p className="font-bold text-xl">Map Not Loaded</p>
+                          <p className="text-base mt-2">Please paste the Google Maps iframe code into the box above and click 'Load Map'.</p>
+                          <p className="text-sm mt-1">This map will be static (not interactive with issue pins).</p>
+                        </div>
+                      </div>
+                    )}
+                </div>
+            </Card>
+            {/* END: Google Maps Iframe Embed Area */}
+          </div>
+
+          {/* Issue List remains the same */}
+          <div className="space-y-4">
+            <Card>
+              <CardContent>
+                <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">Nearby Issues ({issues.length})</h3>
+                <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                  {loading ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Loading issues...</p>
+                  ) : issues.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No issues reported yet</p>
+                  ) : (
+                    issues.map((issue) => (
+                      <div key={issue.id} className="pb-3 border-b border-gray-100 dark:border-gray-700 last:border-0 last:pb-0">
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center flex-shrink-0">
+                            {issue.status === 'resolved' ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm mb-1 truncate text-gray-900 dark:text-white">
+                              {issue.title}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                variant="outline" 
+                                className={
+                                  issue.status === 'resolved' 
+                                    ? 'border-green-500 text-green-500' 
+                                    : issue.status === 'in-progress'
+                                    ? 'border-yellow-500 text-yellow-500'
+                                    : 'border-gray-500 text-gray-500'
+                                }
+                              >
+                                {issue.status.replace('-', ' ')}
+                              </Badge>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {issue.department}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {issues.filter(i => i.status !== 'resolved').length > 0 && (
+              <Card className="bg-yellow-500/10 border-yellow-500/50">
+                <CardContent>
+                  <div className="flex gap-3">
+                    <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
+                    <div>
+                      <h4 className="font-semibold mb-1 text-yellow-700 dark:text-yellow-400">Active Issues Alert</h4>
+                      <p className="text-sm text-yellow-600 dark:text-yellow-500">
+                        {issues.filter(i => i.status !== 'resolved').length} active issue(s) detected. Check the list for details.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default MapView;
