@@ -1,0 +1,167 @@
+import React, { useState, useCallback, useMemo } from 'react';
+import { Search, MapPin, X } from 'lucide-react';
+
+/**
+ * The App component acts as a utility for developers to easily paste the full 
+ * Google Maps iframe code (obtained from Google Maps' "Embed a map" share option)
+ * and preview it instantly. This replaces the complex Mapbox setup.
+ */
+
+// Simple component for consistent styling
+const Card = ({ children, className = "" }) => (
+  <div className={bg-white dark:bg-gray-800 shadow-2xl rounded-xl p-6 transition-all ${className}}>
+    {children}
+  </div>
+);
+
+// Simple Button component with Tailwind styling
+const Button = ({ children, onClick, variant = 'primary', className = '', disabled = false }) => {
+  let baseStyle = "flex items-center justify-center px-4 py-2 font-semibold rounded-lg transition duration-200 ease-in-out transform active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-opacity-50 text-sm";
+  let colorStyle = "";
+
+  if (variant === 'primary') {
+    colorStyle = "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500";
+  } else if (variant === 'secondary') {
+    colorStyle = "bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600";
+  }
+
+  return (
+    <button 
+      onClick={onClick} 
+      className={${baseStyle} ${colorStyle} ${className} ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.01]'}}
+      disabled={disabled}
+    >
+      {children}
+    </button>
+  );
+};
+
+// Simple Textarea input component for the long iframe string
+const Input = ({ value, onChange, placeholder, className = "" }) => (
+  <textarea
+    value={value}
+    onChange={onChange}
+    placeholder={placeholder}
+    rows={4}
+    className={w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 resize-none dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm ${className}}
+  />
+);
+
+
+const App = () => {
+  const [iframeCode, setIframeCode] = useState('');
+  const [embedHtml, setEmbedHtml] = useState(null);
+
+  /**
+   * Safely extracts and sanitizes the iframe element from a raw HTML string.
+   * This ensures we only render the iframe and can apply responsive styling.
+   */
+  const extractIframeContent = useCallback((htmlString) => {
+    // 1. Create a temporary DOM element (div)
+    const tempDiv = document.createElement('div');
+    // 2. Set its innerHTML to the user's input string
+    tempDiv.innerHTML = htmlString;
+    // 3. Find the iframe element within the temporary div
+    const iframe = tempDiv.querySelector('iframe');
+    
+    // 4. Check if an iframe was actually found
+    if (iframe) {
+      // 5. Apply Tailwind classes for responsive styling and border/shadow
+      iframe.className = "w-full rounded-xl border-4 border-indigo-300 dark:border-indigo-700 shadow-2xl"; 
+      iframe.style.minHeight = '450px'; 
+      iframe.style.height = '100%'; 
+      iframe.style.width = '100%';
+
+      // 6. Return the sanitized HTML of the modified iframe
+      return iframe.outerHTML;
+    }
+    
+    // 7. If no iframe is found, return null
+    return null;
+  }, []);
+
+  const handleEmbed = () => {
+    const cleanedHtml = extractIframeContent(iframeCode);
+    if (cleanedHtml) {
+      setEmbedHtml(cleanedHtml);
+    } else {
+      console.error("The pasted code does not contain a valid iframe element.");
+      // Optionally, set an error message state here
+    }
+  };
+  
+  const handleClear = () => {
+      setIframeCode('');
+      setEmbedHtml(null);
+  }
+
+  const isMapEmbedded = useMemo(() => embedHtml !== null, [embedHtml]);
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-8 flex items-start justify-center font-sans">
+      <div className="w-full max-w-4xl space-y-8">
+        <h1 className="text-3xl font-extrabold text-indigo-700 dark:text-indigo-400 text-center">
+          Google Maps Embed Tool
+        </h1>
+        <p className="text-gray-600 dark:text-gray-300 text-center">
+          Paste the full *Google Maps iframe embed code* below to replace the existing Mapbox functionality.
+        </p>
+
+        <Card>
+          <h2 className="text-xl font-bold mb-4 flex items-center text-gray-900 dark:text-white">
+            <Search className="w-5 h-5 mr-2 text-indigo-500" />
+            Paste Google Maps Iframe Code
+          </h2>
+          <Input 
+            value={iframeCode}
+            onChange={(e) => setIframeCode(e.target.value)}
+            placeholder="Paste your full iframe code here (it starts with <iframe ...> and you get it from the 'Embed a map' option on Google Maps)"
+          />
+          <div className="flex justify-end gap-3 mt-4">
+            <Button onClick={handleClear} variant="secondary">
+                <X className="w-4 h-4 mr-1"/> Clear Input
+            </Button>
+            <Button 
+              onClick={handleEmbed} 
+              disabled={iframeCode.trim() === ''}
+              variant="primary"
+            >
+              <MapPin className="w-4 h-4 mr-1"/> Embed Map
+            </Button>
+          </div>
+        </Card>
+
+        {/* Map Preview Area */}
+        <Card className="min-h-[500px]">
+          <h2 className="text-xl font-bold mb-4 flex items-center text-gray-900 dark:text-white">
+            <MapPin className="w-5 h-5 mr-2 text-indigo-500" />
+            Live Map Preview
+          </h2>
+          
+          <div className="w-full" style={{ minHeight: '450px' }}>
+            {isMapEmbedded && embedHtml ? (
+              // This is the key: we use dangerouslySetInnerHTML to render the raw HTML string 
+              // containing the Google Maps iframe provided by the user.
+              <div 
+                dangerouslySetInnerHTML={{ __html: embedHtml }} 
+                className="w-full h-full"
+              />
+            ) : (
+              <div className="h-[450px] flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-xl border-4 border-dashed border-gray-300 dark:border-gray-700 p-6 text-center">
+                <div className="text-gray-500 dark:text-gray-400">
+                  <MapPin className="w-10 h-10 mx-auto mb-3"/>
+                  <p className="font-bold text-lg">Map Preview Area</p>
+                  <p className="text-sm mt-1">Paste your iframe code above and click 'Embed Map' to view the result here.</p>
+                  <p className="text-xs mt-3 opacity-70">The map will automatically be made fully responsive.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+        
+      </div>
+    </div>
+  );
+};
+
+export default App;
